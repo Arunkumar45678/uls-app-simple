@@ -9,24 +9,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup Android
+    - name: Setup Java and Android
       uses: android-actions/setup-android@v3
       
-    - name: Clone and build WebView app
+    - name: Build APK
       run: |
-        # Clone a simple WebView template that definitely works
-        git clone https://github.com/simple-webview/android-webview-template.git
-        cd android-webview-template
-        
-        # Replace the default URL with your website
-        sed -i 's|http://example.com|https://testase.gt.tc/uls/|g' app/src/main/java/com/example/webview/MainActivity.java
-        sed -i 's|Example App|ULS System|g' app/src/main/java/com/example/webview/MainActivity.java
-        
-        # Build the APK
+        git clone https://github.com/Simple-Mobile-WebView/SimpleWebView.git
+        cd SimpleWebView
+        sed -i 's|http://www.example.com|https://testase.gt.tc/uls/|g' app/src/main/java/com/simple/mobile/webview/MainActivity.java
         ./gradlew assembleDebug
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: uls-app
-        path: android-webview-template/app/build/outputs/apk/debug/app-debug.apk
+        path: SimpleWebView/app/build/outputs/apk/debug/app-debug.apk

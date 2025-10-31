@@ -1,0 +1,185 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Create Android WebView Project
+      run: |
+        # Create project structure
+        mkdir -p app/src/main/java/com/uls/app
+        mkdir -p app/src/main/res/values
+        
+        # Create MainActivity.java
+        cat > app/src/main/java/com/uls/app/MainActivity.java << 'EOF'
+        package com.uls.app;
+        
+        import android.os.Bundle;
+        import android.webkit.WebView;
+        import android.webkit.WebViewClient;
+        import androidx.appcompat.app.AppCompatActivity;
+        
+        public class MainActivity extends AppCompatActivity {
+            @Override
+            protected void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                
+                WebView webView = new WebView(this);
+                webView.getSettings().setJavaScriptEnabled(true);
+                webView.getSettings().setDomStorageEnabled(true);
+                webView.setWebViewClient(new WebViewClient());
+                webView.loadUrl("https://testase.gt.tc/uls/");
+                
+                setContentView(webView);
+            }
+        }
+        EOF
+        
+        # Create strings.xml
+        cat > app/src/main/res/values/strings.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <resources>
+            <string name="app_name">ULS System</string>
+        </resources>
+        EOF
+        
+        # Create AndroidManifest.xml
+        cat > app/src/main/AndroidManifest.xml << 'EOF'
+        <?xml version="1.0" encoding="utf-8"?>
+        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+            package="com.uls.app">
+            
+            <uses-permission android:name="android.permission.INTERNET" />
+            <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            
+            <application
+                android:allowBackup="true"
+                android:icon="@mipmap/ic_launcher"
+                android:label="@string/app_name"
+                android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+                <activity
+                    android:name=".MainActivity"
+                    android:label="@string/app_name"
+                    android:exported="true"
+                    android:configChanges="orientation|screenSize|keyboardHidden">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+            </application>
+        </manifest>
+        EOF
+        
+        # Create app build.gradle
+        cat > app/build.gradle << 'EOF'
+        plugins {
+            id 'com.android.application'
+        }
+        
+        android {
+            compileSdk 33
+            namespace 'com.uls.app'
+            
+            defaultConfig {
+                applicationId "com.uls.app"
+                minSdk 21
+                targetSdk 33
+                versionCode 1
+                versionName "1.0"
+            }
+            
+            buildTypes {
+                release {
+                    minifyEnabled false
+                    proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                }
+                debug {
+                    debuggable true
+                }
+            }
+            
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+        }
+        
+        dependencies {
+            implementation 'androidx.appcompat:appcompat:1.6.1'
+            implementation 'com.google.android.material:material:1.9.0'
+        }
+        EOF
+        
+        # Create project build.gradle
+        cat > build.gradle << 'EOF'
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath 'com.android.tools.build:gradle:8.0.2'
+            }
+        }
+        
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        
+        task clean(type: Delete) {
+            delete rootProject.buildDir
+        }
+        EOF
+        
+        # Create settings.gradle
+        echo 'include ":app"' > settings.gradle
+        
+        # Create gradle.properties
+        echo 'org.gradle.jvmargs=-Xmx2048m' > gradle.properties
+        
+    - name: Create Gradle Wrapper
+      run: |
+        # Download gradle wrapper
+        wget https://github.com/gradle/gradle/raw/master/gradle/wrapper/gradle-wrapper.jar -P gradle/wrapper/
+        cat > gradle/wrapper/gradle-wrapper.properties << 'EOF'
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.0-bin.zip
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        EOF
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+      
+    - name: Build with Gradle
+      run: ./gradlew assembleDebug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: uls-app
+        path: app/build/outputs/apk/debug/app-debug.apk
+        retention-days: 90

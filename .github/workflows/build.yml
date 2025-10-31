@@ -1,0 +1,33 @@
+name: Build ULS APK
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java and Android
+      uses: android-actions/setup-android@v3
+      
+    - name: Build APK
+      run: |
+        # Download pre-built WebView template
+        wget -O webview-template.zip "https://github.com/ticofab/android-webview-template/archive/refs/heads/master.zip"
+        unzip webview-template.zip
+        cd android-webview-template-master
+        
+        # Replace with your website URL
+        sed -i 's|https://example.com|https://testase.gt.tc/uls/|g' app/src/main/java/com/ticofab/androidwebviewtemplate/MainActivity.java
+        
+        # Build the APK
+        chmod +x gradlew
+        ./gradlew assembleDebug
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: uls-app
+        path: android-webview-template-master/app/build/outputs/apk/debug/app-debug.apk
